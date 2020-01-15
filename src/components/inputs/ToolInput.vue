@@ -5,7 +5,9 @@
 </style>
 
 <template>
-	<v-combobox ref="input" type="number" min="-273" max="1999" step="any" v-model.number="value" :items="items" @keydown.native="onkeydown" @keyup.enter="apply" @change="onchange" @blur="onblur" :label="label" :loading="applying" :disabled="uiFrozen" class="tool-input">
+	<v-combobox ref="input" type="number" min="-273" max="1999" step="any" class="tool-input" :label="label" :disabled="uiFrozen"
+				v-model.number="value" @keyup.enter="apply" :loading="applying"
+				:items="items" @change="change" hide-selected @blur="value = actualValue">
 	</v-combobox>
 </template>
 
@@ -55,7 +57,6 @@ export default {
 		label: String,
 		active: Boolean,
 		standby: Boolean,
-		tabTarget: [Object, HTMLAnchorElement],
 
 		all: Boolean,
 		heaterIndex: Number,
@@ -73,7 +74,12 @@ export default {
 		async apply() {
 			this.$refs.input.isMenuActive = false;			// FIXME There must be a better solution than this
 
-			if (!this.applying && this.isNumber(this.value)) {
+			if (!this.isNumber(this.value)) {
+				this.$makeNotification('warning', this.$t('error.enterValidNumber'));
+				return;
+			}
+
+			if (!this.applying) {
 				this.applying = true;
 				try {
 					if (this.spindle) {
@@ -135,30 +141,13 @@ export default {
 					console.warn(e);
 				}
 				this.applying = false;
-			} else {
-				this.$makeNotification('warning', this.$t('error.enterValidNumber'));
 			}
 		},
-		onchange(value) {
+		async change(value) {
 			// Note that value is of type String when a user enters a value and then leaves it without confirming...
 			if (value.constructor === Number) {
-				this.apply();
+				await this.apply();
 			}
-		},
-		onkeydown(e) {
-			if (e.keyCode === 9 && this.tabTarget) {
-				e.preventDefault();
-				this.tabTarget.focus();
-			}
-		},
-		onblur() {
-			this.value = this.actualValue;
-		},
-		blur() {
-			this.input.blur();
-		},
-		focus() {
-			this.input.focus();
 		}
 	},
 	mounted() {

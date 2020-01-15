@@ -20,13 +20,13 @@
 			<v-btn class="hidden-sm-and-down mr-3" color="info" :loading="loading" :disabled="uiFrozen" @click="refresh">
 				<v-icon class="mr-1">mdi-refresh</v-icon> {{ $t('button.refresh.caption') }}
 			</v-btn>
-			<upload-btn class="hidden-sm-and-down" :directory="directory" target="sys" color="primary"></upload-btn>
+			<upload-btn class="hidden-sm-and-down" :directory="directory" target="system" color="primary"></upload-btn>
 		</v-toolbar>
 		
-		<base-file-list ref="filelist" v-model="selection" :directory.sync="directory" :loading.sync="loading" sort-table="sys" @fileClicked="fileClicked" @fileEdited="fileEdited" no-files-text="list.sys.noFiles">
+		<base-file-list ref="filelist" v-model="selection" :directory.sync="directory" :loading.sync="loading" sort-table="sys" @fileClicked="fileClicked" @fileEdited="fileEdited" no-files-text="list.system.noFiles">
 			<template #file.config.json v-if="isRootDirectory">
 				<v-icon class="mr-1">mdi-wrench</v-icon> config.json
-				<v-chip @click.stop="editConfigTemplate" class="pointer-cursor ml-2"><v-icon xs class="mr-1">mdi-open-in-new</v-icon> {{ $t('list.sys.configToolNote') }}</v-chip>
+				<v-chip @click.stop="editConfigTemplate" class="pointer-cursor ml-2"><v-icon xs class="mr-1">mdi-open-in-new</v-icon> {{ $t('list.system.configToolNote') }}</v-chip>
 			</template>
 		</base-file-list>
 		
@@ -50,7 +50,7 @@
 				<v-icon>mdi-refresh</v-icon>
 			</v-btn>
 
-			<upload-btn fab dark :directory="directory" target="display" color="primary">
+			<upload-btn fab dark :directory="directory" target="system" color="primary">
 				<v-icon>mdi-cloud-upload</v-icon>
 			</upload-btn>
 		</v-speed-dial>
@@ -70,14 +70,14 @@ import Path from '../../utils/path.js'
 
 export default {
 	computed: {
-		...mapState('machine/model', ['state']),
+		...mapState('machine/model', ['directories', 'state']),
 		...mapGetters(['uiFrozen']),
 		...mapGetters('machine/model', ['isPrinting']),
-		isRootDirectory() { return this.directory === Path.sys; }
+		isRootDirectory() { return this.directory === Path.system; }
 	},
 	data() {
 		return {
-			directory: Path.sys,
+			directory: Path.system,
 			loading: false,
 			selection: [],
 			showNewDirectory: false,
@@ -99,19 +99,19 @@ export default {
 			}
 		},
 		fileEdited(filename) {
-			if (filename === Path.configFile && !this.isPrinting) {
+			if (filename === Path.combine(this.directories.system, Path.configFile) && !this.isPrinting) {
 				this.showResetPrompt = true;
 			}
 		},
 		async resetBoard() {
 			try {
-				await this.sendCode('M999');
+				await this.sendCode({ code: 'M999', log: false });
 			} catch (e) {
 				// this is expected
 			}
 		},
 		async editConfigTemplate() {
-			const jsonTemplate = await this.download({ filename: Path.combine(Path.sys, 'config.json'), type: 'text' });
+			const jsonTemplate = await this.download({ filename: Path.combine(this.directories.system, 'config.json'), type: 'text' });
 
 			const form = document.createElement('form');
 			form.method = 'POST';
@@ -126,6 +126,13 @@ export default {
 			document.body.appendChild(form);
 			form.submit();
 			document.body.removeChild(form);
+		}
+	},
+	watch: {
+		'directories.system'(to, from) {
+			if (this.directory == from) {
+				this.directory = to;
+			}
 		}
 	}
 }

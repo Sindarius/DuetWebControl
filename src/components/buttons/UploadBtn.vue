@@ -23,14 +23,16 @@ import JSZip from 'jszip'
 import { VBtn } from 'vuetify/lib'
 
 import { mapState, mapGetters, mapActions } from 'vuex'
+
 import Path from '../../utils/path.js'
+import { DisconnectedError } from '../../utils/errors.js'
 
 const webExtensions = ['.htm', '.html', '.ico', '.xml', '.css', '.map', '.js', '.ttf', '.eot', '.svg', '.woff', '.woff2', '.jpeg', '.jpg', '.png']
 
 export default {
 	computed: {
 		...mapState(['isLocal']),
-		...mapState('machine/model', ['electronics']),
+		...mapState('machine/model', ['directories', 'electronics']),
 		...mapGetters(['isConnected', 'uiFrozen']),
 		...mapGetters('machine/model', ['board']),
 		caption() {
@@ -52,7 +54,7 @@ export default {
 				case 'macros': return '*';
 				case 'filaments': return '.zip';
 				case 'display': return '*';
-				case 'sys': return '.zip,.bin,.json,.g,.csv';
+				case 'system': return '.zip,.bin,.json,.g,.csv';
 				case 'www': return '.zip,.csv,.json,.htm,.html,.ico,.xml,.css,.map,.js,.ttf,.eot,.svg,.woff,.woff2,.jpeg,.jpg,.png,.gz';
 				case 'update': return '.zip,.bin';
 			}
@@ -64,14 +66,14 @@ export default {
 			}
 
 			switch (this.target) {
-				case 'gcodes': return Path.gcodes;
-				case 'start': return Path.gcodes;
-				case 'macros': return Path.macros;
-				case 'filaments': return Path.filaments;
-				case 'display': return Path.display;
-				case 'sys': return Path.sys;
-				case 'www': return Path.www;
-				case 'update': return Path.sys;
+				case 'gcodes': return this.directories.gCodes;
+				case 'start': return this.directories.gCodes;
+				case 'macros': return this.directories.macros;
+				case 'filaments': return this.directories.filaments;
+				case 'display': return this.directories.display;
+				case 'system': return this.directories.system;
+				case 'www': return this.directories.www;
+				case 'update': return this.directories.system;
 			}
 			return undefined;
 		},
@@ -114,7 +116,7 @@ export default {
 		},
 		async fileSelected(e) {
 			await this.doUpload(e.target.files);
-			this.$refs.fileInput.value = "";
+			e.target.value = '';
 		},
 		isWebFile(filename) {
 			if (webExtensions.some(extension => filename.toLowerCase().endsWith(extension))) {
@@ -190,28 +192,30 @@ export default {
 
 				// Adjust filename if an update is being uploaded
 				let filename = Path.combine(this.destinationDirectory, content.name);
-				if (this.target === 'sys' || this.target === 'update') {
+				if (this.target === 'system' || this.target === 'update') {
 					if (Path.isSdPath(content.name)) {
 						filename = Path.combine('0:/', content.name);
 					} else if (this.isWebFile(content.name)) {
-						filename = Path.combine(Path.www, content.name);
+						filename = Path.combine(this.directories.www, content.name);
 						this.updates.webInterface |= /index.html(\.gz)?/i.test(content.name);
 					} else if (!this.board.firmwareFileRegEx) {
 						if (this.electronics.shortName &&
 							content.name.toLowerCase().startsWith('duet3firmware_' + this.electronics.shortName.toLowerCase()) &&
 							content.name.toLowerCase().endsWith('.bin')) {
-							filename = Path.combine(Path.sys, `Duet3Firmware_${this.electronics.shortName}.bin`);
+							filename = Path.combine(Path.system, `Duet3Firmware_${this.electronics.shortName}.bin`);
 							this.updates.firmware = true;
 						}
 					} else if (this.board.firmwareFileRegEx.test(content.name)) {
-						filename = Path.combine(Path.sys, this.board.firmwareFile);
+						filename = Path.combine(Path.system, this.board.firmwareFile);
 						this.updates.firmware = true;
+					} else if (this.board.iapFiles.indexOf(content.name) !== -1) {
+						filename = Path.combine(Path.system, Path.extractFileName(content.name));
 					} else if (this.board.hasWiFi) {
 						if ((/DuetWiFiSocketServer(.*)\.bin/i.test(content.name) || /DuetWiFiServer(.*)\.bin/i.test(content.name))) {
-							filename = Path.combine(Path.sys, 'DuetWiFiServer.bin');
+							filename = Path.combine(Path.system, 'DuetWiFiServer.bin');
 							this.updates.wifiServer = true;
 						} else if (/DuetWebControl(.*)\.bin/i.test(content.name)) {
-							filename = Path.combine(Path.sys, 'DuetWebControl.bin');
+							filename = Path.combine(Path.system, 'DuetWebControl.bin');
 							this.updates.wifiServerSpiffs = true;
 						}
 					}
@@ -238,10 +242,6 @@ export default {
 			this.uploading = false;
 
 			if (success) {
-				if (zipName) {
-					const secondsPassed = Math.round((new Date() - startTime) / 1000);
-					this.$makeNotification('success', this.$t('notification.upload.success', [zipName, this.$displayTime(secondsPassed)]));
-				}
 				this.$emit('uploadComplete', files);
 
 				if (this.updates.firmware || this.updates.wifiServer || this.updates.wifiServerSpiffs) {
@@ -249,7 +249,13 @@ export default {
 					this.confirmUpdate = true;
 				} else if (!this.isLocal && this.updates.webInterface) {
 					// Reload the web interface immediately if it was the only update
-					location.reload();
+					location.reload(true);
+				}
+
+				// FIXME For some reason the $t function throws an exception when this button is floating
+				if (zipName) {
+					const secondsPassed = Math.round((new Date() - startTime) / 1000);
+					this.$makeNotification('success', this.$t('notification.upload.success', [zipName, this.$displayTime(secondsPassed)]));
 				}
 			}
 		},
@@ -270,7 +276,10 @@ export default {
 			try {
 				await this.sendCode(`M997 S${modules.join(':')}`);
 			} catch (e) {
-				// this is expected
+				if (!(e instanceof DisconnectedError)) {
+					console.warn(e);
+					this.$log('error', this.$t('generic.error'), e.message);
+				}
 			}
 		},
 		dragOver(e) {
@@ -296,7 +305,7 @@ export default {
 		isConnected(to) {
 			if (to && !this.isLocal && this.updates.codeSent && this.updates.webInterface) {
 				// Reload the web interface when the connection could be established again
-				location.reload();
+				location.reload(true);
 			}
 		}
 	}

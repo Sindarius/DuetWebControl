@@ -17,13 +17,16 @@
 	padding-left: 12px;
 	margin-top: 0 !important;
 	resize: none;
+	-moz-tab-size: 4;
+	-o-tab-size: 4;
+	tab-size: 4;
 }
 </style>
 
 <template>
 	<v-dialog v-model="shown" fullscreen hide-overlay transition="dialog-bottom-transition">
 		<v-card class="d-flex flex-column">
-			<v-toolbar card dark color="primary" class="flex-grow-0 flex-shrink-1">
+			<v-app-bar flat dark color="primary" class="flex-grow-0 flex-shrink-1">
 				<v-btn icon dark @click="close(false)">
 					<v-icon>mdi-close</v-icon>
 				</v-btn>
@@ -31,20 +34,21 @@
 
 				<v-spacer></v-spacer>
 
-				<v-toolbar-items>
-					<v-btn v-if="showGCodeHelp" dark text href="https://duet3d.dozuki.com/Wiki/Gcode" target="_blank">
-						<v-icon class="mr-1">mdi-help</v-icon> {{ $t('dialog.fileEdit.gcodeReference') }}
-					</v-btn>
-					<v-btn v-if="showDisplayHelp" dark text href="https://duet3d.dozuki.com/Wiki/Duet_2_Maestro_12864_display_menu_system" target="_blank">
-						<v-icon class="mr-1">mdi-help</v-icon> {{ $t('dialog.fileEdit.menuReference') }} 
-					</v-btn>
-					<v-btn dark text @click="save">
-						<v-icon class="mr-1">mdi-floppy</v-icon> {{ $t('dialog.fileEdit.save') }}
-					</v-btn>
-				</v-toolbar-items>
-			</v-toolbar>
+				<v-btn v-if="showGCodeHelp" dark text href="https://duet3d.dozuki.com/Wiki/Gcode" target="_blank">
+					<v-icon class="mr-1">mdi-help</v-icon> {{ $t('dialog.fileEdit.gcodeReference') }}
+				</v-btn>
+				<v-btn v-if="showDisplayHelp" dark text href="https://duet3d.dozuki.com/Wiki/Duet_2_Maestro_12864_display_menu_system" target="_blank">
+					<v-icon class="mr-1">mdi-help</v-icon> {{ $t('dialog.fileEdit.menuReference') }}
+				</v-btn>
+				<v-btn dark text @click="save">
+					<v-icon class="mr-1">mdi-floppy</v-icon> {{ $t('dialog.fileEdit.save') }}
+				</v-btn>
+			</v-app-bar>
 
-			<v-textarea ref="textarea" :value="innerValue" @blur="setInnerValue($event.target.value)" @keydown.tab.exact.prevent="onTextareaTab" @keydown.esc="close(false)" :rows="null" hide-details solo class="edit-textarea" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></v-textarea>
+			<v-textarea ref="textarea" hide-details solo :rows="null" class="edit-textarea"
+						autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+						:value="innerValue" @input.passive="valueChanged = true" @blur="innerValue = $event.target.value"
+						@keydown.tab.exact.prevent="onTextareaTab" @keydown.esc="close(false)"></v-textarea>
 		</v-card>
 	</v-dialog>
 </template>
@@ -52,9 +56,7 @@
 <script>
 'use strict'
 
-import { mapActions } from 'vuex'
-
-import Path from '../../utils/path.js'
+import { mapState, mapActions } from 'vuex'
 
 export default {
 	props: {
@@ -69,15 +71,16 @@ export default {
 		value: String
 	},
 	computed: {
+		...mapState('machine/model', ['directories']),
 		showGCodeHelp() {
-			if (this.filename.startsWith(Path.macros)) {
+			if (this.filename.startsWith(this.directories.macros)) {
 				return true;
 			}
 			const matches = /\.(.*)$/.exec(this.filename.toLowerCase());
 			return matches && ['.g', '.gcode', '.gc', '.gco', '.nc', '.ngc', '.tap'].indexOf(matches[1]);
 		},
 		showDisplayHelp() {
-			return this.filename.startsWith(Path.display);
+			return this.filename.startsWith(this.directories.menu);
 		}
 	},
 	data() {
@@ -88,12 +91,6 @@ export default {
 	},
 	methods: {
 		...mapActions('machine', ['upload']),
-		setInnerValue(value) {
-			if (value != this.innerValue) {
-				this.valueChanged = true;
-				this.innerValue = value;
-			}
-		},
 		close(fileSaved) {
 			if (this.valueChanged && !fileSaved && !confirm(this.$t('dialog.fileEdit.confirmClose'))) {
 				return;
@@ -123,9 +120,9 @@ export default {
 		},
 		onTextareaTab(e) {
 			const originalSelectionStart = e.target.selectionStart;
-			const textStart = e.target.value.slice(0, originalSelectionStart);
-			const textEnd = e.target.value.slice(originalSelectionStart);
-			e.target.value = `${textStart}\t${textEnd}`;
+			const textStart = e.target.value.slice(0, originalSelectionStart), textEnd = e.target.value.slice(originalSelectionStart);
+			this.innerValue = `${textStart}\t${textEnd}`;
+			e.target.value = this.innerValue;
 			e.target.selectionEnd = e.target.selectionStart = originalSelectionStart + 1;
 		}
 	},
@@ -133,7 +130,7 @@ export default {
 		shown(to) {
 			// Set textarea content
 			this.valueChanged = false;
-			this.innerValue = this.value;
+			this.innerValue = this.value || '';
 
 			if (to) {
 				// Add notification for users in case changes have not been saved yet

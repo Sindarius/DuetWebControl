@@ -70,10 +70,10 @@ export default {
 	computed: {
 		...mapState(["selectedMachine"]),
 		...mapState('machine/cache', ['fileInfos']),
-		...mapState('machine/model', ['state', 'storages']),
+		...mapState('machine/model', ['directories', 'job', 'state', 'storages']),
 		...mapState('settings', ['language']),
 		...mapGetters(['isConnected', 'uiFrozen']),
-		...mapGetters('machine/model', ['isPrinting']),
+		...mapGetters('machine/model', ['isPrinting', 'isSimulating']),
 		headers() {
 			return [
 				{
@@ -133,7 +133,7 @@ export default {
 	},
 	data() {
 		return {
-			directory: Path.gcodes,
+			directory: Path.gCodes,
 			selection: [],
 			filelist: [],
 			loadingValue: false,
@@ -156,7 +156,7 @@ export default {
 			const storage = this.storages[index];
 			let mountSuccess = true, mountResponse;
 			if (storage.mounted) {
-				this.directory = (index === 0) ? Path.gcodes : `${index}:`;
+				this.directory = (index === 0) ? this.directories.gCodes : `${index}:`;
 			} else {
 				this.loading = true;
 				try {
@@ -170,7 +170,7 @@ export default {
 				if (this.isConnected) {
 					if (mountSuccess && mountResponse.indexOf('Error') === -1) {
 						// Change directory
-						this.directory = (index === 0) ? Path.gcodes : `${index}:`;
+						this.directory = (index === 0) ? this.directory.gCodes : `${index}:`;
 						this.$log('success', this.$t('notification.mount.successTitle'));
 					} else {
 						// Show mount message
@@ -277,13 +277,21 @@ export default {
 			var filePath = `${Path.combine(this.directory,item && item.name ? item.name : this.selection[0].name)}`;
 			window.open("/viewer.html?filepath=" + filePath + "&printerip=" + this.selectedMachine, "_blank","noopener,noreferrer" );
 		}
-  
-
 	},
-	watch:{
+	watch: {
 		selectedMachine() {
 			this.directory = Path.gcodes;
+			},
+		'directories.macros'(to, from) {
+			if (this.directory == from) {
+				this.directory = to;
 			}
+		},
+		'job.lastFileName'(to) {
+			if (to && Path.pathAffectsFilelist(to, this.directory, this.filelist)) {
+				this.refresh();
+			}
+		}
 	}
 }
 </script>
