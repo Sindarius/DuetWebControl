@@ -31,7 +31,7 @@
 			</template>
 		</base-file-list>
 
-		<v-speed-dial v-model="fab" bottom right fixed open-on-hover direction="top" transition="scale-transition" class="hidden-md-and-up">
+		<v-speed-dial v-model="fab" bottom right fixed direction="top" transition="scale-transition" class="hidden-md-and-up">
 			<template #activator>
 				<v-btn v-model="fab" dark color="primary" fab>
 					<v-icon v-if="fab">mdi-close</v-icon>
@@ -75,9 +75,12 @@ import Path from '../../utils/path.js'
 export default {
 	computed: {
 		...mapGetters(['uiFrozen']),
-		...mapState('machine/model', ['directories', 'tools']),
-		isRootDirectory() { return this.directory === this.directories.filaments; },
-		filamentSelected() { return (this.directory === this.directories.filaments) && (this.selection.length === 1) && this.selection[0].isDirectory; }
+		...mapState('machine/model', {
+			filamentsDirectory: state => state.directories.filaments,
+			tools: state => state.tools
+		}),
+		isRootDirectory() { return Path.equals(this.directory, this.filamentsDirectory); },
+		filamentSelected() { return Path.equals(this.directory, this.filamentsDirectory) && (this.selection.length === 1) && this.selection[0].isDirectory; }
 	},
 	data() {
 		return {
@@ -102,7 +105,6 @@ export default {
 
 			this.doingFileOperation = true;
 			try {
-				console.log(path);
 				const emptyFile = new Blob();
 				await this.upload({ filename: Path.combine(path, 'load.g'), content: emptyFile, showSuccess: false });
 				await this.upload({ filename: Path.combine(path, 'config.g'), content: emptyFile, showSuccess: false });
@@ -123,8 +125,8 @@ export default {
 			// Download the files first
 			let loadG, unloadG;
 			try {
-				loadG = await this.download({ filename: Path.combine(Path.filaments, filament, 'load.g'), showSuccess: false, showError: false });
-				unloadG = await this.download({ filename: Path.combine(Path.filaments, filament, 'unload.g'), showSuccess: false, showError: false });
+				loadG = await this.download({ filename: Path.combine(Path.filaments, filament, 'load.g'), type: 'blob', showSuccess: false, showError: false });
+				unloadG = await this.download({ filename: Path.combine(Path.filaments, filament, 'unload.g'), type: 'blob', showSuccess: false, showError: false });
 			} catch (e) {
 				if (!(e instanceof DisconnectedError) && !(e instanceof OperationCancelledError)) {
 					this.$makeNotification('error', this.$t('notification.download.error', [!loadG ? 'load.g' : 'unload.g']), e.message);
@@ -134,7 +136,7 @@ export default {
 
 			let configG;
 			try {
-				configG = await this.download({ filename: Path.combine(Path.filaments, filament, 'config.g'), showSuccess: false, showError: false });
+				configG = await this.download({ filename: Path.combine(Path.filaments, filament, 'config.g'), type: 'blob', showSuccess: false, showError: false });
 			} catch (e) {
 				// config.g may not exist
 				if (!(e instanceof DisconnectedError) && !(e instanceof OperationCancelledError) && !(e instanceof FileNotFoundError)) {
@@ -160,7 +162,7 @@ export default {
 		},
 		async rename() {
 			const filament = this.selection[0].name;
-			if (this.tools.some(tool => tool.filament === filament)) {
+			if (this.tools.some(tool => tool && tool.filament === filament)) {
 				this.$makeNotification('error', this.$t('notification.renameFilament.errorTitle'), this.$t('notification.renameFilament.errorStillLoaded'));
 				return;
 			}
@@ -172,7 +174,7 @@ export default {
 				items = this.selection.slice();
 			}
 
-			if (items.some(item => item.isDirectory && this.tools.some(tool => tool.filament === item.name))) {
+			if (items.some(item => item.isDirectory && this.tools.some(tool => tool && tool.filament === item.name))) {
 				this.$makeNotification('error', this.$t('notification.deleteFilament.errorTitle'), this.$t('notification.deleteFilament.errorStillLoaded'));
 				return;
 			}
@@ -199,7 +201,8 @@ export default {
 					}
 
 					// Delete the item
-					await this.$refs.filelist.remove(items[i]);
+					await this.delete(Path.combine(Path.filaments, items[i].name));
+					await this.refresh();
 				} catch (e) {
 					if (!(e instanceof DisconnectedError)) {
 						console.warn(e);
@@ -214,9 +217,12 @@ export default {
 			this.$refs.filelist.edit(item);
 		}
 	},
+	mounted() {
+		this.directory = this.filamentsDirectory;
+	},
 	watch: {
-		'directories.filaments'(to, from) {
-			if (this.directory == from) {
+		filamentsDirectory(to, from) {
+			if (Path.equals(this.directory, from) || !Path.startsWith(this.directory, to)) {
 				this.directory = to;
 			}
 		}

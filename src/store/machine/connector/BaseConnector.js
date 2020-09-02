@@ -35,7 +35,11 @@ class BaseConnector {
 			xhr.onload = function() {
 				if (xhr.status >= 200 && xhr.status < 300) {
 					try {
-						resolve(JSON.parse(xhr.responseText));
+						if (!xhr.responseText) {
+							resolve(null);
+						} else {
+							resolve(JSON.parse(xhr.responseText));
+						}
 					} catch (e) {
 						reject(e);
 					}
@@ -94,6 +98,11 @@ class BaseConnector {
 		this.settings = null;
 	}
 
+	// Called to update the progress while connecting (in per cent)
+	static setConnectingProgress(progress) {
+		BaseConnector.prototype.store.commit('setConnectingProgress', progress);
+	}
+
 	// Called to invoke actions on the registered module
 	async dispatch(action, payload) {
 		if (this.module) {
@@ -135,7 +144,7 @@ class BaseConnector {
 	async makeDirectory(directory) { throw new NotImplementedError('makeDirectory'); }
 
 	// Download a file asynchronously. Returns the file content on completion
-	// Parameter can be either the filename or an object { filename, (type, onProgress) }
+	// Parameter can be either the filename or an object { filename, (type, onProgress, cancellationToken) }
 	// See also upload()
 	async download(payload) { throw new NotImplementedError('download'); }
 

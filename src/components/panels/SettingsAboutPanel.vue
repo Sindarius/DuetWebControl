@@ -17,13 +17,15 @@
 </template>
 
 <script>
-'use strict';
+'use strict'
 
 import { version } from '../../../package.json'
 
 export default {
-	computed: {
-		version: () => version
+	data() {
+		return {
+			version
+		}
 	}
 }
 </script>
