@@ -32,50 +32,67 @@ function loadColors(viewer) {
     return colors;
 }
 
+
+function processResponse(viewer, response) {
+    updateProgress(100);
+    viewer.processFile(response);
+    $('.progress').hide();
+    $("#layerSlider").slider("setAttribute", "max", viewer.getMaxHeight());
+    $("#lineCount").text("Rendered Lines: " + viewer.getLineCount());
+    $("#renderMode").text("Render Mode:    " + viewer.getRenderMode());
+}
+
+
+function loadFile(filePath) {
+
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            type: "GET",
+            url: filePath,
+            timeout: 0,
+            xhr: function() {
+                var xhr = new window.XMLHttpRequest();
+                xhr.timeout = 0;
+                xhr.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        var percent = evt.loaded / evt.total;
+                        updateProgress(percent * 100);
+                    }
+                });
+                return xhr;
+            },
+            success: function(response) {
+                resolve(response);
+            },
+            error: function(xhr, status, results) {
+                reject(results);
+            }
+        });
+    });
+}
+
+
+
+
 $(document).ready(function() {
+
     var viewer = new gcodeViewer($("#3DCanvas")[0]);
     viewer.init();
     $(".colorPicker").colorpicker();
     loadColors(viewer);
 
+    loadFile("http://" + $.urlParam("printerip") + "/machine/file/" + $.urlParam("filepath"))
+        .then((response) => {
+            processResponse(viewer, response);
+        }, () => {
+            loadFile("http://" + $.urlParam("printerip") + "/rr_download?name=" + $.urlParam("filepath"))
+                .then((response) => {
+                    processResponse(viewer, response);
+                }, () => {
+                    $("#progressText").text("Failed to download gcode ");
+                });
 
-    var fileUrl = "";
-    if ($.urlParam('sbc') !== 0 && $.urlParam('sbc').toLowerCase === "true") {
-        fileUrl = "http://" + $.urlParam("printerip") + "/machine/file/" + $.urlParam("filepath");
-    } else {
-        fileUrl = "http://" + $.urlParam("printerip") + "/rr_download?name=" + $.urlParam("filepath");
-    }
-
-    $.ajax({
-        type: "GET",
-        url: fileUrl,
-        timeout: 0,
-        xhr: function() {
-            var xhr = new window.XMLHttpRequest();
-            xhr.timeout = 0;
-            xhr.addEventListener("progress", function(evt) {
-                if (evt.lengthComputable) {
-                    var percent = evt.loaded / evt.total;
-                    updateProgress(percent * 100);
-                }
-            });
-            return xhr;
-        },
-        success: function(response) {
-            updateProgress(100);
-            viewer.processFile(response);
-            $('.progress').hide();
-            $("#layerSlider").slider("setAttribute", "max", viewer.getMaxHeight());
-            $("#lineCount").text("Rendered Lines: " + viewer.getLineCount());
-            $("#renderMode").text("Render Mode:    " + viewer.getRenderMode());
-        },
-        error: function(xhr, status, results) {
-            $("#progressText").text("Failed to download gcode " + fileUrl);
-            console.log(xhr);
-            console.log(status);
-            console.log(results);
-        }
-    });
+        });
 
     $("#layerSlider").on("change", function(e) {
         var value = $("#layerSlider").slider("getValue");
