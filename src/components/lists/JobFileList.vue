@@ -75,7 +75,8 @@ export default {
 			gCodesDirectory: state => state.directories.gCodes,
 			lastJobFile: state => state.job.lastFileName,
 			status: state => state.state.status,
-			volumes: state => state.volumes
+			volumes: state => state.volumes,
+			dsfVersion: state => state.state.dsfVersion,
 		}),
 		...mapState('settings', ['language']),
 		...mapGetters(['isConnected', 'uiFrozen']),
@@ -266,8 +267,9 @@ export default {
 			this.sendCode(`M37 P"${Path.combine(this.directory, (item && item.name) ? item.name : this.selection[0].name)}"`);
 		},
 		view3D(item) {
+			var sbcEnabled = this.dsfVersion !== null ? "true" : "false";
 			var filePath = `${Path.combine(this.directory,item && item.name ? item.name : this.selection[0].name)}`;
-			window.open("/viewer.html?filepath=" + filePath + "&printerip=" + this.selectedMachine, "_blank","noopener,noreferrer" );
+			window.open("/viewer.html?filepath=" + filePath + "&printerip=" + this.selectedMachine + "&sbc=" + sbcEnabled, "_blank","noopener,noreferrer" );
 		}
 	},
 	mounted() {
