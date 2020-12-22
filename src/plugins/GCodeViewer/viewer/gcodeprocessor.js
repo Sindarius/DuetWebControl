@@ -314,11 +314,11 @@ export default class {
         this.processLine(line, filePosition);
         // this.processLineV2(line, filePosition);
 
-        if (this.loadingProgressCallback) {
-          this.loadingProgressCallback(filePosition / line.length);
-        }
       }
       if (Date.now() - this.timeStamp > 10) {
+        if (this.loadingProgressCallback) {
+          this.loadingProgressCallback(filePosition / file.length);
+        }
         await this.pauseProcessing();
       }
     }

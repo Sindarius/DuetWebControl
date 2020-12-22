@@ -79,6 +79,20 @@
 	top: 0px;
 	z-index: 50 !important;
 }
+
+.loading-progress {
+	position: absolute;
+	width: 50%;
+	left: 0px;
+	margin-left: 25%;
+	top : 5px;
+	z-index: 19 !important;
+}
+
+/* Transitions lag when trying to show loading progress */
+.disable-transition {
+	transition: none !important;
+}
 </style>
 
 <template>
@@ -88,6 +102,11 @@
                 <code-btn :code="'M112\nM999'" :log="false" color="red" :title="$t('button.emergencyStop.title')"><v-icon>mdi-flash</v-icon></code-btn>
             </div>
             <canvas ref="viewerCanvas" class="babylon-canvas" :title="hoverLabel"></canvas>
+			<div class="loading-progress">
+				<v-progress-linear rounded v-show="loading"  height="15" :value="loadingProgress" class="disable-transition">
+					{{loadingProgress}}%
+				</v-progress-linear>
+			</div>
             <div class="button-container" :class="{ 'button-container-drawer': drawer }">
                 <v-btn class="full-screen-icon mb-2" small @click="toggleFullScreen" :title="$t('plugins.gcodeViewer.fullscreen')">
                     <v-icon>{{ fullscreen ? 'mdi-window-restore' : 'mdi-window-maximize' }}</v-icon>
@@ -268,56 +287,59 @@
 import gcodeViewer from './viewer/gcodeviewer.js';
 import { mapActions, mapState } from 'vuex';
 import Path from '../../utils/path.js';
-import {  KinematicsName } from '../../store/machine/modelEnums';
-import { isPrinting } from '../../store/machine/modelEnums.js'
+import { KinematicsName } from '../../store/machine/modelEnums';
+import { isPrinting } from '../../store/machine/modelEnums.js';
 let viewer = {};
 
 export default {
-	data: () => ({
-		drawer: false,
-		extruderColors: ['#00FFFF', '#FF00FF', '#FFFF00', '#000000', '#FFFFFF'],
-		backgroundColor: '#000000FF',
-		progressColor: '#FFFFFFFF',
-		viewerHeight: '400px',
-		testValue: 'Test',
-		loading: false,
-		testData: '',
-		showCursor: false,
-		showTravelLines: false,
-		selectedFile: '',
-		nthRow: 1,
-		renderQuality: 1,
-		debugVisible: false,
-		maxHeight: 0,
-		sliderHeight: 0,
-		sliderBottomHeight: 0,
-		liveZTracking: false,
-		forceWireMode: false,
-		vertexAlpha: false,
-		spreadLines: false,
-		showObjectSelection: false,
-		objectDialogData: {
-			showDialog: false,
-			info: {},
-		},
-		hoverLabel: '',
-		bedRenderMode: 0,
-		showAxes: true,
-		showObjectLabels: true,
-		liveTrackingShowSolid: false,
-		fullscreen: false,
-		bedColor: '',
-		colorMode: 0,
-		minColorRate: 20,
-		maxColorRate: 60,
-		maxFileFeedRate: 0,
-		minFeedColor: '#0000FF',
-		maxFeedColor: '#FF0000',
-		cameraInertia: true,
-	}),
+	data: function () {
+		return {
+			drawer: false,
+			extruderColors: ['#00FFFF', '#FF00FF', '#FFFF00', '#000000', '#FFFFFF'],
+			backgroundColor: '#000000FF',
+			progressColor: '#FFFFFFFF',
+			viewerHeight: '400px',
+			testValue: 'Test',
+			loading: false,
+			testData: '',
+			showCursor: false,
+			showTravelLines: false,
+			selectedFile: '',
+			nthRow: 1,
+			renderQuality: 1,
+			debugVisible: false,
+			maxHeight: 0,
+			sliderHeight: 0,
+			sliderBottomHeight: 0,
+			liveZTracking: false,
+			forceWireMode: false,
+			vertexAlpha: false,
+			spreadLines: false,
+			showObjectSelection: false,
+			objectDialogData: {
+				showDialog: false,
+				info: {},
+			},
+			hoverLabel: '',
+			bedRenderMode: 0,
+			showAxes: true,
+			showObjectLabels: true,
+			liveTrackingShowSolid: false,
+			fullscreen: false,
+			bedColor: '',
+			colorMode: 0,
+			minColorRate: 20,
+			maxColorRate: 60,
+			maxFileFeedRate: 0,
+			minFeedColor: '#0000FF',
+			maxFeedColor: '#FF0000',
+			cameraInertia: true,
+			loadingProgress: 0,
+		};
+	},
 	computed: {
 		...mapState('machine/model', ['job', 'move', 'state']),
-		isJobRunning: state =>  isPrinting(state.state.status),
+		isJobRunning: state => isPrinting(state.state.status),
 		visualizingCurrentJob: function (state) {
 			try {
 				return state.job.file.fileName === this.selectedFile && this.isJobRunning;
@@ -397,6 +419,9 @@ export default {
 		this.extruderColors = viewer.getExtruderColors();
 		this.backgroundColor = viewer.getBackgroundColor();
 		this.progressColor = viewer.getProgressColor();
+		viewer.gcodeProcessor.loadingProgressCallback = progress => {
+			this.loadingProgress = Math.ceil(progress * 100);
+		};
 		this.viewModelEvent = async path => {
 			this.selectedFile = path;
 
@@ -720,6 +745,11 @@ export default {
 		},
 		$route: function () {
 			this.resize();
+		},
+		loading: function (to) {
+			if (!to) {
+				this.loadingProgress = 0;
+			}
 		},
 	},
 };
