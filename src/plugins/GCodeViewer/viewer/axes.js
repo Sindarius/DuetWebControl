@@ -60,25 +60,23 @@ export default class {
     var axisX = Mesh.CreateLines('axisX', [Vector3.Zero(), new Vector3(this.size, 0, 0), new Vector3(this.size * 0.95, 0.05 * this.size, 0), new Vector3(this.size, 0, 0), new Vector3(this.size * 0.95, -0.05 * this.size, 0)], this.scene);
     axisX.color = new Color3(1, 0, 0);
     axisX.parent = this.axesMesh;
-    var xChar = this.makeTextPlane('X', 'red', this.size / 10);
+        var xChar = this.makeTextPlane('X', 'red', this.size / 10);
     xChar.position = new Vector3(0.9 * this.size, 0.05 * this.size, 0);
     xChar.parent = this.axesMesh;
 
-    var axisY = Mesh.CreateLines('axisY', [Vector3.Zero(), new Vector3(0, this.size, 0), new Vector3(-0.05 * this.size, this.size * 0.95, 0), new Vector3(0, this.size, 0), new Vector3(0.05 * this.size, this.size * 0.95, 0)], this.scene);
-    axisY.color = new Color3(0, 1, 0);
-    axisY.parent = this.axesMesh;
-
-    var yChar = this.makeTextPlane('Z', 'green', this.size / 10);
-    yChar.position = new Vector3(0, 0.9 * this.size, -0.05 * this.size);
-    yChar.parent = this.axesMesh;
-
-    var axisZ = Mesh.CreateLines('axisZ', [Vector3.Zero(), new Vector3(0, 0, this.size), new Vector3(0, -0.05 * this.size, this.size * 0.95), new Vector3(0, 0, this.size), new Vector3(0, 0.05 * this.size, this.size * 0.95)], this.scene);
+    var axisZ = Mesh.CreateLines('axisY', [Vector3.Zero(), new Vector3(0, this.size, 0), new Vector3(-0.05 * this.size, this.size * 0.95, 0), new Vector3(0, this.size, 0), new Vector3(0.05 * this.size, this.size * 0.95, 0)], this.scene);
     axisZ.color = new Color3(0, 0, 1);
     axisZ.parent = this.axesMesh;
-
-    var zChar = this.makeTextPlane('Y', 'blue', this.size / 10);
-    zChar.position = new Vector3(0, 0.05 * this.size, 0.9 * this.size);
+    var zChar = this.makeTextPlane('Z', 'blue', this.size / 10);
+    zChar.position = new Vector3(0, 0.9 * this.size, -0.05 * this.size);
     zChar.parent = this.axesMesh;
+
+    var axisY = Mesh.CreateLines('axisZ', [Vector3.Zero(), new Vector3(0, 0, this.size), new Vector3(0, -0.05 * this.size, this.size * 0.95), new Vector3(0, 0, this.size), new Vector3(0, 0.05 * this.size, this.size * 0.95)], this.scene);
+    axisY.color = new Color3(0, 1, 0);
+    axisY.parent = this.axesMesh;
+    var yChar = this.makeTextPlane('Y', 'green', this.size / 10);
+    yChar.position = new Vector3(0, 0.05 * this.size, 0.9 * this.size);
+    yChar.parent = this.axesMesh;
 
     this.axesMesh.setEnabled(this.visible);
     this.axesMesh.getChildren().forEach((mesh) => this.registerClipIgnore(mesh));
