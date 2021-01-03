@@ -373,7 +373,6 @@ export default class {
                   if (this.spreadLines) {
                     this.currentPosition.y *= this.spreadLineAmount;
                   }
-                  // this.maxHeight = this.currentPosition.y;
                   break;
                 case 'E':
                   //Do not count retractions as extrusions
@@ -479,7 +478,22 @@ export default class {
         } break;
         case 'G28':
           //Home
-          this.currentPosition = new Vector3(0, 0, 0);
+          tokens = tokenString.split(/(?=[GXYZ])/);
+          if (tokens.length == 1) {
+            this.currentPosition = new Vector3(0, 0, 0);
+          }
+          else {
+            if (tokens.some(t => t.trim() === 'X')) {
+              this.currentPosition.x = 0;
+            }
+            if (tokens.some(t => t.trim() === 'Y')) {
+              this.currentPosition.z = 0;
+            }
+            if (tokens.some(t => t.trim() === 'Z')) {
+              this.currentPosition.y = 0;
+            }
+
+          }
           break;
         case 'G90':
           this.absolute = true;
