@@ -376,8 +376,11 @@ export default class {
                   // this.maxHeight = this.currentPosition.y;
                   break;
                 case 'E':
-                  line.extruding = true;
-                  this.maxHeight = this.currentPosition.y; //trying to get the max height of the model.
+                  //Do not count retractions as extrusions
+                  if (Number(token.substring(1)) > 0) {
+                    line.extruding = true;
+                    this.maxHeight = this.currentPosition.y; //trying to get the max height of the model.
+                  }
                   break;
                 case 'F':
                   this.currentFeedRate = Number(token.substring(1));
@@ -598,7 +601,7 @@ export default class {
     lineMesh.material = new StandardMaterial("m", scene);
     lineMesh.material.backFaceCulling = true;
     lineMesh.material.forceDepthWrite = true;
-    lineMesh.alphaIndex =  meshIndex;
+    lineMesh.alphaIndex = meshIndex;
     lineMesh.renderingGroupId = 2;
 
 
