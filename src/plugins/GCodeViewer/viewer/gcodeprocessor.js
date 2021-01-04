@@ -33,6 +33,7 @@ export default class {
     this.travels = [];
     this.sps;
     this.maxHeight = 0;
+    this.minHeight = 0;
     this.lineCount = 0;
     this.renderMode = '';
     this.extruderCount = 5;
@@ -152,6 +153,10 @@ export default class {
 
   getMaxHeight() {
     return this.maxHeight;
+  }
+
+  getMinHeight() {
+    return this.minHeight;
   }
 
   setRenderQualitySettings(numberOfLines, renderQuality) {
@@ -370,6 +375,10 @@ export default class {
                   break;
                 case 'Z':
                   this.currentPosition.y = this.absolute ? Number(token.substring(1)) : this.currentPosition.y + Number(token.substring(1));
+                  if (this.currentPosition.y < this.minHeight) {
+                    console.log(`minheight ${this.currentPosition.y} `)
+                    this.minHeight = this.currentPosition.y;
+                  }
                   if (this.spreadLines) {
                     this.currentPosition.y *= this.spreadLineAmount;
                   }

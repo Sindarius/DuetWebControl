@@ -214,9 +214,9 @@
                         <v-expansion-panel-content>
                             <v-card>
                                 <div>{{$t('plugins.gcodeViewer.topClipping')}}</div>
-                                <v-slider min="0.1" :max="maxHeight" v-model="sliderHeight" thumb-label thumb-size="24" step="0.1"></v-slider>
+                                <v-slider :min="minHeight" :max="maxHeight" v-model="sliderHeight" thumb-label thumb-size="24" step="0.1"></v-slider>
                                 <div>{{$t('plugins.gcodeViewer.bottomClipping')}}</div>
-                                <v-slider min="0.1" :max="maxHeight" v-model="sliderBottomHeight" thumb-label thumb-size="24" step="0.1"></v-slider>
+                                <v-slider :min="minHeight" :max="maxHeight" v-model="sliderBottomHeight" thumb-label thumb-size="24" step="0.1"></v-slider>
                                 <v-checkbox v-model="liveZTracking" :label="$t('plugins.gcodeViewer.liveZTracking')"></v-checkbox>
                             </v-card>
                             <v-card>
@@ -309,6 +309,7 @@ export default {
 			renderQuality: 1,
 			debugVisible: false,
 			maxHeight: 0,
+			minHeight: 0,
 			sliderHeight: 0,
 			sliderBottomHeight: 0,
 			liveZTracking: false,
@@ -434,9 +435,7 @@ export default {
 
 				await viewer.processFile(blob);
 				viewer.gcodeProcessor.setLiveTracking(this.visualizingCurrentJob);
-				this.maxHeight = viewer.getMaxHeight();
-				this.sliderHeight = this.maxHeight;
-				this.maxFileFeedRate = viewer.gcodeProcessor.maxFeedRate;
+				this.setGCodeValues();
 			} finally {
 				this.loading = false;
 			}
@@ -521,9 +520,7 @@ export default {
 				viewer.gcodeProcessor.setLiveTracking(true);
 				viewer.gcodeProcessor.updateForceWireMode(this.forceWireMode);
 				await viewer.processFile(blob);
-				this.maxHeight = viewer.getMaxHeight();
-				this.sliderHeight = this.maxHeight;
-				this.maxFileFeedRate = viewer.gcodeProcessor.maxFeedRate;
+				this.setGCodeValues();
 				viewer.buildObjects.loadObjectBoundaries(this.job.build.objects); //file is loaded lets load the final heights
 			} finally {
 				this.loading = false;
@@ -550,6 +547,7 @@ export default {
 				viewer.setCursorVisiblity(this.showCursor);
 				viewer.toggleTravels(this.showTravelLines);
 				this.maxHeight = viewer.getMaxHeight();
+				this.minHeight = viewer.getMinHeight();
 				this.sliderHeight = this.maxHeight;
 				this.sliderBottomHeight = 0;
 				this.maxFileFeedRate = viewer.gcodeProcessor.maxFeedRate;
@@ -579,16 +577,21 @@ export default {
 				this.$refs.fileInput.click();
 			}
 		},
+		setGCodeValues() {
+				this.maxHeight = viewer.getMaxHeight();
+				this.minHeight = viewer.getMinHeight();
+				this.sliderHeight = this.maxHeight;
+				this.loading = false;
+				this.maxFileFeedRate = viewer.gcodeProcessor.maxFeedRate;
+
+		},
 		async fileSelected(e) {
 			const reader = new FileReader();
 			reader.addEventListener('load', async event => {
 				const blob = event.target.result;
 				// Do something with result
 				await viewer.processFile(blob);
-				this.maxHeight = viewer.getMaxHeight();
-				this.sliderHeight = this.maxHeight;
-				this.loading = false;
-				this.maxFileFeedRate = viewer.gcodeProcessor.maxFeedRate;
+				this.setGCodeValues();
 			});
 			this.loading = true;
 			reader.readAsText(e.target.files[0]);
@@ -600,6 +603,7 @@ export default {
 				viewer.resize();
 			});
 		},
+
 		displayMaxFileFeedRate() {
 			if (this.maxFileFeedRate > 0) return `(${this.maxFileFeedRate / 60})`;
 		},
