@@ -376,7 +376,6 @@ export default class {
                 case 'Z':
                   this.currentPosition.y = this.absolute ? Number(token.substring(1)) : this.currentPosition.y + Number(token.substring(1));
                   if (this.currentPosition.y < this.minHeight) {
-                    console.log(`minheight ${this.currentPosition.y} `)
                     this.minHeight = this.currentPosition.y;
                   }
                   if (this.spreadLines) {
@@ -461,6 +460,7 @@ export default class {
         case 'G2':
         case 'G3': {
           tokens = tokenString.split(/(?=[GXYZIJFRE])/);
+          let extruding = tokenString.indexOf('E') > 0;
           let cw = tokens.filter(t => t === "G2");
           let arcResult = doArc(tokens, this.currentPosition, !this.absolute, 1);
           let curPt = this.currentPosition.clone();
@@ -469,6 +469,7 @@ export default class {
             line.gcodeLineNumber = this.gcodeLineNumber;
             line.start = curPt.clone();
             line.end = new Vector3(point.x, point.y, point.z);
+            line.extruding = extruding;
             line.color = this.currentColor.clone();
             if (this.debug) {
               line.color = cw ? new Color4(0, 1, 1, 1) : new Color4(1, 1, 0, 1)
